@@ -13,7 +13,7 @@ st.title("📱 Cadastro Rápido (Câmera)")
 st.caption("Aponte a câmera para o código de barras do produto na prateleira.")
 
 # --- 1. CAPTURA VIA CÂMERA DO CELULAR ---
-foto = st.camera_input("Escanear Código de Barras")
+foto = st.file_uploader("Toque para abrir a câmera do celular", type=["jpg", "jpeg", "png"])
 
 codigo_lido = ""
 if foto is not None:
