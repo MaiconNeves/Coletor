@@ -2,3 +2,4 @@ streamlit
 pandas
 pillow
 pyzbar
+streamlit-qrcode-scanner
