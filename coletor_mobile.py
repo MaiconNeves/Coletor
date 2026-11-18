@@ -16,28 +16,54 @@ if "dados_api" not in st.session_state:
 
 @st.cache_data(ttl=3600)
 def buscar_dados_mestres(ean):
-  url = f"https://openfoodfacts.org{ean}.json"
-  try:
-    resposta = requests.get(url, timeout=5)
-    if resposta.status_code == 200:
-      dados = resposta.json()
-      if dados.get("status") == 1:
-        produto = dados.get("product", {})
+  ean_limpo = "".join(filter(str.isdigit, str(ean)))
+  headers = {"User-Agent": "ColetorMobileStreamlit/1.0"}
+
+  # 1. Tenta no Open Food Facts e Open Beauty Facts (Alimentos, Bebidas, Cosméticos/Higiene)
+  for dominio in ["world.openfoodfacts.org", "world.openbeautyfacts.org"]:
+    try:
+      r = requests.get(
+          f"https://{dominio}/api/v2/product/{ean_limpo}.json",
+          headers=headers,
+          timeout=5,
+      )
+      if r.status_code == 200 and r.json().get("status") == 1:
+        p = r.json().get("product", {})
         nome = (
-            produto.get("product_name_pt")
-            or produto.get("product_name")
-            or "Produto sem descrição"
+            p.get("product_name_pt")
+            or p.get("product_name")
+            or p.get("generic_name")
         )
-        marca = produto.get("brands", "Não informada")
-        embalagem = produto.get("quantity", "UN")
+        if nome:
+          return {
+              "encontrado": True,
+              "descricao": nome,
+              "marca": p.get("brands", ""),
+              "embalagem": p.get("quantity", "UN"),
+          }
+    except Exception:
+      pass
+
+  # 2. Tenta no UPCitemdb (Produtos gerais, eletrônicos, ferramentas e varejo global - 100/dia grátis)
+  try:
+    r = requests.get(
+        f"https://upcitemdb.com{ean_limpo}",
+        headers=headers,
+        timeout=5,
+    )
+    if r.status_code == 200:
+      itens = r.json().get("items", [])
+      if itens:
+        item = itens[0]
         return {
             "encontrado": True,
-            "descricao": nome,
-            "marca": marca,
-            "embalagem": embalagem,
+            "descricao": item.get("title", ""),
+            "marca": item.get("brand", ""),
+            "embalagem": item.get("size", "UN") or "UN",
         }
   except Exception:
     pass
+
   return {
       "encontrado": False,
       "descricao": "",
